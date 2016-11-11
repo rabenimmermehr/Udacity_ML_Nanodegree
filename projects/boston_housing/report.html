@@ -14641,6 +14641,8 @@ voyus+uR/6cAAAAASUVORK5CYII=
 <div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
 <p><strong>Answer: </strong> With k-fold cross-validation, the learning algorithm doesn't just learn on one set of the data and gets tested on the other, but actually this process is repeated k times, where each time another segment of the data is used as test data. Using grid search without any cross validation could lead to overfitting to this specific slice of data, whereas k-fold cross validation reports the performance of the model in all areas of the dataset.</p>
+<p><em>Addition after review:</em></p>
+<p>The K-Fold technique splits the data into k equally sized sections, usually not randomizing the samples. Each of these sections is then used once as testing data, with the remaining k-1 sections used as training data, ergo leading to k iterations. The final performance score is then computed as the average of all the scores of each iteration.</p>
 
 </div>
 </div>
