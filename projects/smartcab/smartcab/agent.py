@@ -3,6 +3,7 @@ import math
 from environment import Agent, Environment
 from planner import RoutePlanner
 from simulator import Simulator
+from Crypto.Random.random import randint
 
 class LearningAgent(Agent):
     """ An agent that learns to drive in the Smartcab world.
@@ -23,6 +24,7 @@ class LearningAgent(Agent):
         ## TO DO ##
         ###########
         # Set any additional class parameters as needed
+        self.amountOfResets = 0
 
 
     def reset(self, destination=None, testing=False):
@@ -39,7 +41,14 @@ class LearningAgent(Agent):
         # Update epsilon using a decay function of your choice
         # Update additional class parameters as needed
         # If 'testing' is True, set epsilon and alpha to 0
-
+        #self.epsilon -= 0.05
+        self.epsilon = math.cos(self.amountOfResets*0.005)
+        self.amountOfResets +=1
+        
+        if testing:
+            self.epsilon = 0
+            self.alpha = 0
+            
         return None
 
     def build_state(self):
@@ -60,8 +69,33 @@ class LearningAgent(Agent):
         #   If it is not, create a dictionary in the Q-table for the current 'state'
         #   For each action, set the Q-value for the state-action pair to 0
         
-        state = None
-
+        # Note from student: Isn't the creation of the dictionary handled in the
+        # 'createQ' method, which get's called right after this method in 'update'?
+        # => Ignored for now
+        
+        # To reduce amount of states simply store whether
+        # we might have to yield to oncoming traffic
+        oncoming_blocking = None
+        if(inputs['oncoming'] == 'left' or inputs['oncoming'] == None):
+            # If it's turning left, we have right of way
+            # Same if there's no traffic at all
+            oncoming_blocking = False
+        else:
+            # If it's going straight or right,
+            # we might have to yield in case of us going left
+            oncoming_blocking = True
+            
+        # To further reduce amount of states,
+        # check legal interactions with traffic from our left
+        left_blocking = None
+        if(inputs['left'] == None):
+            # We could make a right turn, since no traffic from the left
+            left_blocking = False
+        else:
+            # We're not allowed to make a right turn
+            left_blocking = True
+            
+        state = (waypoint, inputs['light'], left_blocking, oncoming_blocking)
         return state
 
 
@@ -73,8 +107,12 @@ class LearningAgent(Agent):
         ## TO DO ##
         ###########
         # Calculate the maximum Q-value of all actions for a given state
-
         maxQ = None
+        q_values = self.Q[state]
+        
+        for action, q_value in q_values.iteritems():
+            if q_value > maxQ:
+                maxQ = q_value
 
         return maxQ 
 
@@ -88,7 +126,12 @@ class LearningAgent(Agent):
         # When learning, check if the 'state' is not in the Q-table
         # If it is not, create a new dictionary for that state
         #   Then, for each action available, set the initial Q-value to 0.0
-
+        if self.learning and not self.Q.has_key(state):
+            zero_qs = dict()
+            for action in self.valid_actions:
+                zero_qs[action] = 0.
+            self.Q[state] = zero_qs
+            
         return
 
 
@@ -105,9 +148,22 @@ class LearningAgent(Agent):
         ## TO DO ##
         ###########
         # When not learning, choose a random action
+        if not self.learning:
+            action = random.choice(self.valid_actions)
         # When learning, choose a random action with 'epsilon' probability
+        elif random.random() < self.epsilon:
+          action= random.choice(self.valid_actions)  
+          print("Random Action")
         #   Otherwise, choose an action with the highest Q-value for the current state
- 
+        else:
+            
+            # find the maximum Q value
+            maxQ = self.get_maxQ(state)
+            # Search for the corresponding action
+            for stored_action, value in self.Q[state].iteritems():
+                if value == maxQ:
+                    action = stored_action
+                    
         return action
 
 
@@ -121,7 +177,11 @@ class LearningAgent(Agent):
         ###########
         # When learning, implement the value iteration update rule
         #   Use only the learning rate 'alpha' (do not use the discount factor 'gamma')
-
+        
+        # FIXME: Shouldn't get_maxQ(s') be called instead of get_maxQ(s)???
+        self.Q[state][action] = ((1-self.alpha)*self.Q[state][action]
+            + self.alpha*reward)
+        
         return
 
 
@@ -157,13 +217,13 @@ def run():
     #   learning   - set to True to force the driving agent to use Q-learning
     #    * epsilon - continuous value for the exploration factor, default is 1
     #    * alpha   - continuous value for the learning rate, default is 0.5
-    agent = env.create_agent(LearningAgent)
+    agent = env.create_agent(LearningAgent, learning=True)
     
     ##############
     # Follow the driving agent
     # Flags:
     #   enforce_deadline - set to True to enforce a deadline metric
-    env.set_primary_agent(agent)
+    env.set_primary_agent(agent, enforce_deadline=True)
 
     ##############
     # Create the simulation
@@ -172,14 +232,14 @@ def run():
     #   display      - set to False to disable the GUI if PyGame is enabled
     #   log_metrics  - set to True to log trial and simulation results to /logs
     #   optimized    - set to True to change the default log file name
-    sim = Simulator(env)
+    sim = Simulator(env, update_delay=0.01, display=True, log_metrics=True, optimized = True)
     
     ##############
     # Run the simulator
     # Flags:
     #   tolerance  - epsilon tolerance before beginning testing, default is 0.05 
     #   n_test     - discrete number of testing trials to perform, default is 0
-    sim.run()
+    sim.run(tolerance = 0.05, n_test=10)
 
 
 if __name__ == '__main__':
