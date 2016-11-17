@@ -24,7 +24,7 @@ class LearningAgent(Agent):
         ## TO DO ##
         ###########
         # Set any additional class parameters as needed
-        self.amountOfResets = 0
+        self.trial_count = 0
 
 
     def reset(self, destination=None, testing=False):
@@ -42,8 +42,8 @@ class LearningAgent(Agent):
         # Update additional class parameters as needed
         # If 'testing' is True, set epsilon and alpha to 0
         #self.epsilon -= 0.05
-        self.epsilon = math.cos(self.amountOfResets*0.005)
-        self.amountOfResets +=1
+        self.trial_count = self.trial_count + 1
+        self.epsilon = math.cos(self.trial_count * 0.005)
         
         if testing:
             self.epsilon = 0
@@ -73,29 +73,7 @@ class LearningAgent(Agent):
         # 'createQ' method, which get's called right after this method in 'update'?
         # => Ignored for now
         
-        # To reduce amount of states simply store whether
-        # we might have to yield to oncoming traffic
-        oncoming_blocking = None
-        if(inputs['oncoming'] == 'left' or inputs['oncoming'] == None):
-            # If it's turning left, we have right of way
-            # Same if there's no traffic at all
-            oncoming_blocking = False
-        else:
-            # If it's going straight or right,
-            # we might have to yield in case of us going left
-            oncoming_blocking = True
-            
-        # To further reduce amount of states,
-        # check legal interactions with traffic from our left
-        left_blocking = None
-        if(inputs['left'] == None):
-            # We could make a right turn, since no traffic from the left
-            left_blocking = False
-        else:
-            # We're not allowed to make a right turn
-            left_blocking = True
-            
-        state = (waypoint, inputs['light'], left_blocking, oncoming_blocking)
+        state = (waypoint, inputs['light'], inputs['left'], inputs['oncoming'])
         return state
 
 
